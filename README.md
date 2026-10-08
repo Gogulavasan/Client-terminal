@@ -9,27 +9,35 @@ to malls, FECs, resorts, parks and developers across India.
   checklist, data schema and the operating loop.
 - **`crt.py`** — zero-dependency terminal CRM. All data in `data/leads.json`;
   git history is the audit trail.
-- **`.claude/commands/`** — the automation. Run inside Claude Code:
-  - `/find-clients [geo or segment]` — scan the web for buyers with a live trigger,
-    score, de-dupe, add to the tracker, draft pitches for hot leads, commit & push.
-  - `/pitch <ID>` — full personalised pitch pack for one lead.
-  - `/followups` — everything due today + the next touch drafted for each.
-- **`pitches/`** — one pitch pack per lead (drafts awaiting your approval).
+- **The 24-hour scanner** — a cloud routine ("Circuit Entertainment — 24h client
+  scanner") runs **every 6 hours on Anthropic's servers**, app open or not. Each run
+  scans the market, scores and de-dupes, adds leads here, writes a one-screen
+  **opportunity brief** to `opportunities/` for every hot lead (score ≥ 70), and
+  **raises a GitHub Issue** for it — so GitHub emails you the moment an opportunity
+  is spotted. Target: **≥ 10 qualified clients per week**. Manage it at
+  https://claude.ai/code/routines
+- **`.claude/commands/`** — the same engine, on demand inside Claude Code:
+  - `/find-clients [geo or segment]` — run a scan right now.
+  - `/pitch <ID>` — a pitch pack if you want a head start on a proposal.
+  - `/followups` — everything due today.
+- **`opportunities/`** — briefs: why now, venue, product fit, who to contact, sources.
+  **You write the proposal** from these.
 - **`PIPELINE.md`** — auto-generated dashboard (`python crt.py pipeline`).
 
 ## Daily workflow
 
+1. Check your email / the repo's **Issues** tab — each 🔥 issue is a hot opportunity
+   with its brief attached.
+2. Read the brief in `opportunities/`, draft your proposal, send it from your own
+   email / WhatsApp / LinkedIn.
+3. Log it so follow-ups are tracked:
 ```
-/find-clients                    # morning: discover + score + draft (10–20 leads)
-/followups                       # what's due, with next-touch drafts
+python crt.py log CRT-0012 --channel email --summary "Proposal sent" --next "Follow up" --next-date 2026-10-14
+python crt.py update CRT-0012 --status pitched
+python crt.py due                # what's due today
 python crt.py pipeline           # the dashboard
 ```
-Review the drafts in `pitches/`, send the ones you approve (from your own email /
-WhatsApp / LinkedIn), then log them:
-```
-python crt.py log CRT-0007 --channel email --summary "Intro sent" --next "Nudge" --next-date 2026-10-14
-python crt.py update CRT-0007 --status pitched
-```
+Close the GitHub Issue when the opportunity is actioned (won/lost/parked).
 
 ## Terminal CRM cheat-sheet
 
@@ -54,8 +62,12 @@ Statuses: `new researched pitched replied meeting proposal won lost parked do_no
 3. **Business contacts only.** Professional name/role/business channel — no personal data.
 4. **Numbers with assumptions.** ROI frames always state their inputs and invite correction.
 
-## Scheduling the scan
-Inside Claude Code you can schedule `/find-clients` to run each morning (e.g. weekdays 9am) so new leads and drafts are waiting for you. Runs happen while the app is open.
+## How the scanner stays safe
+- It never sends outreach and has no email/messaging access — notification is a GitHub Issue only.
+- **Privacy guard:** it pushes to this repo only while the repo is **private** (an anonymous
+  request to the repo URL must return 404). If the repo is ever public it keeps the run
+  local and says so in its summary. Keep this repo private — it holds prospect details.
+- Every fact it records carries a source URL; anything unconfirmed is marked `UNVERIFIED`.
 
 ## Setup
 Python 3.10+ (stdlib only). Clone, then run any `crt.py` command. The repo is **private** — it contains prospect contact details.
