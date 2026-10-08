@@ -1,5 +1,5 @@
 {
-  "next_id": 8,
+  "next_id": 12,
   "leads": [
     {
       "id": "CRT-0001",
@@ -273,6 +273,165 @@
         }
       ],
       "notes": "",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0008",
+      "company": "Brigade Group — Arcadia at Brigade Cornerstone Utopia",
+      "type": "mall",
+      "city": "Bengaluru",
+      "state": "KA",
+      "website": "https://www.brigadegroup.com",
+      "source_url": "https://scanx.trade/stock-market-news/real-estate/brigade-enterprises-opens-pvr-inox-arcadia-utopia/49802642",
+      "trigger": "Opened 6-screen, 949-seat PVR INOX at Arcadia (~2.5 lakh sq ft retail, Varthur Rd/Whitefield) on 1 Sep 2026; COO Retail positions it as 'everyday retail + experiential offerings' — entertainment line-up still being built",
+      "decision_makers": [
+        {
+          "name": "Sunil Munshi",
+          "role": "COO Retail, Brigade Group",
+          "channel": "LinkedIn / Brigade corporate office",
+          "contact": "via brigadegroup.com",
+          "verified": true,
+          "source": "https://www.investywise.com/brigade-enterprises-opens-new-pvr-inox-cinema"
+        }
+      ],
+      "score": 87,
+      "tier": "A",
+      "status": "new",
+      "products_fit": [
+        "photo_booth",
+        "mixed_reality",
+        "car_sim",
+        "escape_room"
+      ],
+      "pitch_angle": "Brigade already hosts our live zone at Orion Mall — extend the proven Orion attraction mix to Arcadia to convert new cinema footfall into dwell and spend",
+      "next_action": "Owner to draft proposal",
+      "next_action_date": "2026-10-08",
+      "owner": "",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Lead created",
+          "outcome": ""
+        }
+      ],
+      "notes": "2026-10-08: PVR INOX opened at Arcadia, 6 audis/949 seats/~42,000 sq ft; existing tenants F&B-heavy (Third Wave, Chaayos, GigaEats food court, McDonald's) — no FEC listed (https://www.constructionweekonline.in/projects-tenders/brigade-group-opens-pvr-inox-cinemas-at-brigade-cornerstone-utopia). Brigade owns Orion Malls where Circuit's own zone runs.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0009",
+      "company": "Playaza Entertainments (Malabar Group)",
+      "type": "fec",
+      "city": "Mangaluru",
+      "state": "KA",
+      "website": "https://playaza.co.in",
+      "source_url": "https://www.amusementsandattractions.com/amusements/news/indian-family-entertainment-brand-set-to-develop-flagship-centre",
+      "trigger": "Signed LOI with Nexus Malls for a 22,000 sq ft, ~INR 18 cr FEC in Mangaluru (Fiza by Nexus) — first outside Kerala; plans 6 centres in 18 months incl. Bengaluru, Mysuru, Hyderabad, Coimbatore, Chennai",
+      "decision_makers": [],
+      "score": 86,
+      "tier": "A",
+      "status": "new",
+      "products_fit": [
+        "mixed_reality",
+        "dome_360",
+        "car_sim",
+        "escape_room"
+      ],
+      "pitch_angle": "Fit-out stage for six new centres: add headset-free Mixed Reality, full-motion Car Sim and an Escape Room as anchors that rides/arcade don't cover — supplied outright, serviced from Bengaluru",
+      "next_action": "Owner to draft proposal",
+      "next_action_date": "2026-10-08",
+      "owner": "",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Lead created",
+          "outcome": ""
+        }
+      ],
+      "notes": "2026-10-08: LOI ~Sept 2026 per Amusements & Attractions (URL above); company LinkedIn says Nexus Fiza Mangalore outlet 'coming soon' (https://in.linkedin.com/company/playaza). Mall: Fiza by Nexus, 0.7 msf (https://www.nexusselecttrust.com/nexus-fiza). No named DM found — UNVERIFIED; find Playaza BD/projects head.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0010",
+      "company": "Lakeshore Mall Hyderabad (Lake Shore, Kukatpally Y-Junction)",
+      "type": "mall",
+      "city": "Hyderabad",
+      "state": "TS",
+      "website": "",
+      "source_url": "https://www.indianretailer.com/news/retail-india-news-lake-shore-opens-y-junction-mall-hyderabad",
+      "trigger": "Opened Dec 2025 with 'multiple entertainment zones' still being filled — Imagicaa Hello Park (10,000 sq ft) LOI targeted to open before year-end 2026 festive season",
+      "decision_makers": [],
+      "score": 75,
+      "tier": "A",
+      "status": "new",
+      "products_fit": [
+        "photo_booth",
+        "mixed_reality",
+        "car_sim",
+        "escape_room"
+      ],
+      "pitch_angle": "Mall still in tenanting/ramp-up year: fill remaining entertainment zones for young adults with Car Sim, Escape Rooms and zero-staff Photo Booths, owned outright",
+      "next_action": "Owner to draft proposal",
+      "next_action_date": "2026-10-08",
+      "owner": "",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Lead created",
+          "outcome": ""
+        }
+      ],
+      "notes": "2026-10-08: opened 12 Dec 2025 (https://www.theweek.in/wire-updates/business/2025/12/20/dcm29-asbl.html); 9-screen PVR INOX; sources differ on size (3 lakh vs 1.6 msf) — to confirm. Hello Park LOI dated 11 Mar 2026. No named DM — UNVERIFIED.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0011",
+      "company": "Inorbit Malls — Prozone Mall Coimbatore",
+      "type": "mall",
+      "city": "Coimbatore",
+      "state": "TN",
+      "website": "https://www.inorbit.in",
+      "source_url": "https://propnewstime.com/latestnewsstories/MzUxODg=/inorbit-malls-completes-inr-1-242-5-crore-acquisition-of-two-prozone-malls",
+      "trigger": "Inorbit (K Raheja) completed INR 1,242.5 cr acquisition of Prozone Coimbatore (~0.5 msf) on 24 Aug 2026 — new owner likely to reposition the mix (Inorbit added a Timezone FEC at Hubballi)",
+      "decision_makers": [
+        {
+          "name": "Rajneesh Mahajan",
+          "role": "CEO, Inorbit Malls",
+          "channel": "Inorbit corporate office / LinkedIn",
+          "contact": "via inorbit.in",
+          "verified": true,
+          "source": "https://propnewstime.com/latestnewsstories/MzUxODg=/inorbit-malls-completes-inr-1-242-5-crore-acquisition-of-two-prozone-malls"
+        }
+      ],
+      "score": 78,
+      "tier": "A",
+      "status": "new",
+      "products_fit": [
+        "photo_booth",
+        "mixed_reality",
+        "dome_360",
+        "car_sim",
+        "escape_room"
+      ],
+      "pitch_angle": "New-owner 100-day plan: an entertainment refresh that gives Coimbatore families a fresh reason to visit — anchor with a 360 Dome or Escape Rooms, monetise corridors with Photo Booths",
+      "next_action": "Owner to draft proposal",
+      "next_action_date": "2026-10-08",
+      "owner": "",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Lead created",
+          "outcome": ""
+        }
+      ],
+      "notes": "2026-10-08: completion 24 Aug 2026 (https://filingreader.com/news-wire/mumbai/2026-08-24/prozone-realty-completes-inr-124250-crore-mall-asset-sale). Repositioning plan NOT announced — UNVERIFIED inference. Find Coimbatore centre head.",
       "created": "2026-10-08",
       "updated": "2026-10-08"
     }
