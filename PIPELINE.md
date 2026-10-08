@@ -1,8 +1,8 @@
 # Client Terminal — Pipeline
 
-_Updated 08 Oct 2026, 17:58 IST_ · open **DASHBOARD.html** for the full view
+_Updated 08 Oct 2026, 18:05 IST_ · open **DASHBOARD.html** for the full view
 
-**Scanner:** 🟢 ONLINE · last scan 17 min ago (08 Oct 2026, 17:40 IST) · next ≈ 08 Oct 2026, 23:30 IST
+**Scanner:** 🟢 ONLINE · last scan 25 min ago (08 Oct 2026, 17:40 IST) · next ≈ 08 Oct 2026, 23:30 IST
 
 **Week 05 Oct – 11 Oct:** `▓▓▓▓▓▓▓▓░░░░░░░░░░░░` **4 / 10** qualified clients · 6 to go · 3 day(s) left · resets Monday
 

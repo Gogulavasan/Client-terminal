@@ -423,6 +423,81 @@ def pipeline_text(db):
     return "\n".join(out) + "\n"
 
 
+# Motion layer for the dashboard (plain strings, not f-strings: no brace doubling).
+DASH_ANIM_CSS = """
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.hdrbg{position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:44px 44px;opacity:.16;mask:linear-gradient(180deg,#000,transparent 55%);-webkit-mask:linear-gradient(180deg,#000,transparent 55%)}
+.scanline{position:fixed;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(55,224,166,.35),transparent);animation:scanline 8s linear infinite;pointer-events:none;z-index:0}
+@keyframes scanline{from{top:-2px}to{top:100%}}
+.live{display:flex;flex-wrap:wrap;gap:14px;align-items:stretch;margin-bottom:14px}
+.radar{position:relative;width:96px;height:96px;border-radius:50%;flex:none;border:1px solid var(--line);background:radial-gradient(circle,rgba(55,224,166,.10),rgba(55,224,166,.02) 62%,transparent 72%);overflow:hidden}
+.radar::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,transparent 0 15px,var(--line) 15px 16px)}
+.radar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line);box-shadow:48px 0 0 -48px var(--line)}
+.radar .sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(55,224,166,.6),rgba(55,224,166,.18) 45deg,transparent 100deg);animation:spin 3s linear infinite}
+.radar .blip{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);opacity:0;animation:blip 3s ease-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blip{0%,8%{opacity:0;transform:scale(.3)}16%{opacity:1;transform:scale(1.3)}55%{opacity:.5;transform:scale(1)}100%{opacity:0}}
+.ticker{flex:1;min-width:260px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:9px;overflow:hidden}
+.ticker .tk{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:12.5px;min-height:18px}
+.ticker .lbl{color:var(--acc);font-weight:800;letter-spacing:.16em;display:inline-flex;align-items:center;gap:6px}
+.ticker .lbl::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px var(--bad);animation:rec 1.2s ease-in-out infinite}
+@keyframes rec{50%{opacity:.25}}
+.ticker .msg{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s}
+.ticker .cur{display:inline-block;width:8px;height:14px;background:var(--acc);animation:cursor 1s steps(2) infinite;flex:none}
+@keyframes cursor{50%{opacity:0}}
+.ticker .bar{height:4px;background:var(--line);border-radius:999px;overflow:hidden}
+.ticker .bar i{display:block;height:100%;width:28%;background:linear-gradient(90deg,transparent,var(--acc),transparent);animation:scan 1.9s linear infinite}
+@keyframes scan{from{transform:translateX(-120%)}to{transform:translateX(420%)}}
+.ticker .meta{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;gap:16px;flex-wrap:wrap}
+.countdown{flex:none;min-width:150px;border:1px solid var(--line);border-radius:14px;background:var(--card);padding:12px 16px;display:flex;flex-direction:column;justify-content:center;font-family:var(--mono);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--fg)}
+.countdown small{font-size:10px;letter-spacing:.2em;color:var(--dim);font-weight:700}
+.prog i{position:relative;overflow:hidden;animation:grow 1.4s cubic-bezier(.2,.8,.2,1) both}
+.prog i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 2.4s linear infinite}
+@keyframes grow{from{width:0}}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+header,.card{animation:fadeup .5s both} .card:nth-of-type(2){animation-delay:.05s}
+.kpi .v{animation:fadeup .6s both} tbody tr{animation:fadeup .45s both}
+tbody tr:nth-child(1){animation-delay:.05s}tbody tr:nth-child(2){animation-delay:.12s}tbody tr:nth-child(3){animation-delay:.19s}tbody tr:nth-child(4){animation-delay:.26s}tbody tr:nth-child(5){animation-delay:.33s}tbody tr:nth-child(6){animation-delay:.4s}
+.score.hot{animation:glow 2.2s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 10px rgba(255,93,93,.45)}}
+"""
+
+DASH_JS = """
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // live countdown to the next scheduled scan
+  var cd = document.getElementById('cd');
+  var next = cd ? new Date(cd.getAttribute('data-next')) : null;
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function tick(){
+    if (!next) return;
+    var ms = Math.max(0, next - Date.now());
+    var h = Math.floor(ms / 3.6e6), m = Math.floor(ms % 3.6e6 / 6e4), s = Math.floor(ms % 6e4 / 1e3);
+    cd.firstChild.nodeValue = pad(h) + ':' + pad(m) + ':' + pad(s);
+  }
+  tick(); setInterval(tick, 1000);
+  // rotating "what the terminal is scanning" ticker
+  var msgs = __MSGS__, i = 0, el = document.getElementById('tk');
+  if (el && msgs.length > 1) setInterval(function(){
+    i = (i + 1) % msgs.length; el.style.opacity = 0;
+    setTimeout(function(){ el.textContent = msgs[i]; el.style.opacity = 1; }, 250);
+  }, 2800);
+  // count-up numbers
+  if (!reduce) document.querySelectorAll('.kpi .v, .target .big').forEach(function(n){
+    var t = n.childNodes[0]; if (!t || t.nodeType !== 3) return;
+    var target = parseInt(t.nodeValue, 10); if (isNaN(target)) return;
+    var start = null;
+    function step(ts){ if (!start) start = ts; var p = Math.min(1, (ts - start) / 900);
+      t.nodeValue = Math.round(target * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); }
+    t.nodeValue = '0'; requestAnimationFrame(step);
+  });
+})();
+</script>
+"""
+
+
 def dashboard_html(db):
     s = compute_stats(db)
     e = html.escape
@@ -443,6 +518,24 @@ def dashboard_html(db):
         chips.append(f"<span class='wk {cls}' title='{lbl} – {w['end'].strftime('%d %b')}'>"
                      f"{lbl}<b>{w['found']}/{WEEKLY_TARGET}</b></span>")
     weeks_html = "".join(chips)
+    next_iso = s["next_scan"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    ticker_msgs = [
+        "Scanning Bengaluru · malls & family entertainment centres",
+        "Monitoring Karnataka · new openings, expansions, renovations",
+        "Tracking Tamil Nadu · resorts, parks & arenas",
+        "Watching Kerala · entertainment zones & FEC launches",
+        "Scanning Telangana & Andhra · mall anchors & new wings",
+        "Sweeping Mumbai · Pune · Hyderabad · Delhi-NCR · Ahmedabad · Kolkata",
+        "Reading trade press · retail, real-estate & hospitality",
+        "Checking job boards · FEC, arcade & entertainment hiring",
+        "Listening for tenders & EOIs · entertainment zones",
+        "Qualifying candidates · scoring 0–100 against the ICP",
+        "Writing opportunity briefs · raising GitHub alerts",
+        f"Week {week_lbl}: {s['weekly']} / {WEEKLY_TARGET} qualified · "
+        + ("target met — loop continues" if s["target_met"] else f"{WEEKLY_TARGET - s['weekly']} to go"),
+        f"{len(s['hot'])} hot lead(s) ready for proposals",
+    ]
+    dash_js = DASH_JS.replace("__MSGS__", json.dumps(ticker_msgs, ensure_ascii=False))
 
     def pill(score):
         c = "hot" if score >= 70 else "warm" if score >= 45 else "cold"
@@ -562,7 +655,8 @@ details.cl{{border:1px solid var(--line);border-radius:10px;margin:8px 0;backgro
 details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::before{{content:"▸";color:var(--dim)}} details.cl[open] summary::before{{content:"▾"}}
 .clbody{{padding:4px 14px 14px;border-top:1px solid var(--line)}} .clbody h4{{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}}
 .kv2{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 18px;font-size:13px;margin-top:10px}} .kv2 div span{{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}}
-</style></head><body><div class="wrap">
+{DASH_ANIM_CSS}
+</style></head><body><div class="hdrbg"></div><div class="scanline"></div><div class="wrap">
 <header>
   <h1>Client Terminal <small>Circuit Entertainment · B2B growth engine</small></h1>
   <div class="status">
@@ -572,6 +666,20 @@ details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::b
     <span>every {SCAN_EVERY_H}h · updated {e(_ist(s['now']))}</span>
   </div>
 </header>
+
+<div class="live">
+  <div class="radar" title="Live scan"><div class="sweep"></div>
+    <span class="blip" style="left:60%;top:28%"></span>
+    <span class="blip" style="left:28%;top:58%;animation-delay:1s"></span>
+    <span class="blip" style="left:66%;top:66%;animation-delay:2s"></span>
+    <span class="blip" style="left:44%;top:40%;animation-delay:1.5s"></span></div>
+  <div class="ticker">
+    <div class="tk"><span class="lbl">LIVE</span><span class="msg" id="tk">{e(ticker_msgs[0])}</span><span class="cur"></span></div>
+    <div class="bar"><i></i></div>
+    <div class="meta"><span>24h market monitor · every {SCAN_EVERY_H}h</span><span>priority: KA → TN · KL · TS · AP → metros</span><span>{len(s['scans'])} scan(s) logged</span></div>
+  </div>
+  <div class="countdown" id="cd" data-next="{next_iso}">--:--:--<small>NEXT SCAN IN</small></div>
+</div>
 
 <div class="card" style="margin-bottom:14px">
   <h2>🔁 Weekly target — {e(week_lbl)} · qualified clients found by the terminal</h2>
@@ -605,7 +713,9 @@ details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::b
   {register_html}
 </div>
 <footer>Regenerated automatically after every scan (<span class="mono">python crt.py pipeline</span>) · data: <span class="mono">data/leads.json</span> · Power BI: <span class="mono">data/leads_export.csv</span></footer>
-</div></body></html>
+</div>
+{dash_js}
+</body></html>
 """
 
 

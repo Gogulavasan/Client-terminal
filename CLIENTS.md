@@ -1,6 +1,6 @@
 # Client register — found by the terminal
 
-_Updated 08 Oct 2026, 17:58 IST. Terminal-found clients only; the older Client Relationship Tracker data is kept separate._
+_Updated 08 Oct 2026, 18:05 IST. Terminal-found clients only; the older Client Relationship Tracker data is kept separate._
 
 | ID | Found | Score | Company | City | Status | Next | Dossier |
 |---|---|---|---|---|---|---|---|
