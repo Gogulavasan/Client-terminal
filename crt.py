@@ -498,7 +498,9 @@ DASH_JS = """
 """
 
 
-def dashboard_html(db):
+def dashboard_html(db, public=False):
+    """public=True renders the shareable view: no decision-maker names/contacts,
+    notes, dossier or brief paths. Company-level information only."""
     s = compute_stats(db)
     e = html.escape
     dot = "on" if s["online"] else ("stale" if s["last_scan"] else "off")
@@ -563,8 +565,21 @@ def dashboard_html(db):
     for l in s["register"]:
         bf = brief_for(l["id"])
         dossier = f"clients/{l['id']}-{_slug(l['company'])}.md"
-        notes = f"<h4>Notes</h4><p class='sub'>{e(l['notes'])}</p>" if l.get("notes") else ""
-        brief = f" · Brief: <span class='mono'>opportunities/{e(bf)}</span>" if bf else ""
+        if public:
+            # Shareable view: company-level facts only.
+            private_bits = ""
+            dm_block = ("<h4>Decision-makers</h4><p class='sub'>Kept in the private register.</p>")
+            foot = ""
+        else:
+            private_bits = (kv('Pitch angle', e(l['pitch_angle'] or '—'))
+                            + kv('Owner', e(l['owner'] or '—')))
+            dm_block = (f"<h4>Decision-makers</h4><table><thead><tr><th>Name</th><th>Role</th>"
+                        f"<th>Channel</th><th>Verified</th><th>Source</th></tr></thead>"
+                        f"<tbody>{dm_rows(l)}</tbody></table>")
+            notes = f"<h4>Notes</h4><p class='sub'>{e(l['notes'])}</p>" if l.get("notes") else ""
+            brief = f" · Brief: <span class='mono'>opportunities/{e(bf)}</span>" if bf else ""
+            foot = (f"{notes}<p class='sub' style='margin-top:10px'>Dossier: "
+                    f"<span class='mono'>{e(dossier)}</span>{brief}</p>")
         reg.append(
             f"<details class='cl'><summary><span class='mono'>{e(l['id'])}</span> <b>{e(l['company'])}</b>"
             f"<span class='sub'>{e(l['city'])}</span> {pill(l['score'])} "
@@ -572,16 +587,26 @@ def dashboard_html(db):
             f"<span class='sub'>found {e(l['created'])}</span></summary><div class='clbody'>"
             f"<div class='kv2'>{kv('Type', e(l['type']))}{kv('Tier', e(l['tier']))}"
             f"{kv('Website', e(l['website'] or '—'))}{kv('Source', '<span class=mono>' + e(l['source_url'] or '—') + '</span>')}"
-            f"{kv('Trigger — why now', e(l['trigger'] or '—'))}{kv('Pitch angle', e(l['pitch_angle'] or '—'))}"
+            f"{kv('Trigger — why now', e(l['trigger'] or '—'))}"
             f"{kv('Products fit', e(', '.join(l['products_fit']) or '—'))}"
             f"{kv('Next action', e(l['next_action_date']) + ' · ' + e(l['next_action']))}"
-            f"{kv('Owner', e(l['owner'] or '—'))}{kv('Last updated', e(l['updated']))}</div>"
-            f"<h4>Decision-makers</h4><table><thead><tr><th>Name</th><th>Role</th><th>Channel</th>"
-            f"<th>Verified</th><th>Source</th></tr></thead><tbody>{dm_rows(l)}</tbody></table>"
-            f"<h4>History — past to present</h4><ul class='feed'>{hist_rows(l)}</ul>{notes}"
-            f"<p class='sub' style='margin-top:10px'>Dossier: <span class='mono'>{e(dossier)}</span>{brief}</p>"
+            f"{private_bits}{kv('Last updated', e(l['updated']))}</div>"
+            f"{dm_block}"
+            f"<h4>History — past to present</h4><ul class='feed'>{hist_rows(l)}</ul>{foot}"
             f"</div></details>")
     register_html = "".join(reg) or "<div class='sub'>No clients found by the terminal yet.</div>"
+    if public:
+        reg_intro = ("Public view — company-level information only. Decision-makers, notes and "
+                     "dossiers are kept in the private register.")
+        footer_txt = ("Circuit Entertainment · Client Terminal — live public view · regenerated "
+                      "automatically after every scan")
+    else:
+        reg_intro = ("Terminal-found clients only — the older Client Relationship Tracker data is kept "
+                     "separate. Click a client to expand. Dossiers live in <span class=\"mono\">clients/</span>.")
+        footer_txt = ("Regenerated automatically after every scan (<span class=\"mono\">python crt.py pipeline"
+                      "</span>) · data: <span class=\"mono\">data/leads.json</span> · Power BI: "
+                      "<span class=\"mono\">data/leads_export.csv</span> · public copy: "
+                      "<span class=\"mono\">public/index.html</span>")
 
     def kpi(label, val, sub=""):
         return (f'<div class="kpi"><div class="v">{e(str(val))}</div>'
@@ -709,10 +734,10 @@ details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::b
 
 <div class="card" style="margin-top:14px">
   <h2>📇 Client register — full past &amp; present record of every client the terminal found ({len(s['register'])})</h2>
-  <p class="sub" style="margin-bottom:10px">Terminal-found clients only — the older Client Relationship Tracker data is kept separate. Click a client to expand. Dossiers live in <span class="mono">clients/</span>.</p>
+  <p class="sub" style="margin-bottom:10px">{reg_intro}</p>
   {register_html}
 </div>
-<footer>Regenerated automatically after every scan (<span class="mono">python crt.py pipeline</span>) · data: <span class="mono">data/leads.json</span> · Power BI: <span class="mono">data/leads_export.csv</span></footer>
+<footer>{footer_txt}</footer>
 </div>
 {dash_js}
 </body></html>
@@ -721,6 +746,7 @@ details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::b
 
 CLIENTS_DIR = os.path.join(BASE, "clients")
 CLIENTS_MD = os.path.join(BASE, "CLIENTS.md")
+PUBLIC_DIR = os.path.join(BASE, "public")      # sanitized copy for the public live site
 
 
 def client_dossier_md(l):
@@ -763,6 +789,11 @@ def write_outputs(db):
         f.write(pipeline_text(db))
     with open(DASHBOARD_HTML, "w", encoding="utf-8") as f:
         f.write(dashboard_html(db))
+    # Shareable copy (no decision-makers / notes / dossiers) -> published to the
+    # public GitHub Pages repo after every scan.
+    os.makedirs(PUBLIC_DIR, exist_ok=True)
+    with open(os.path.join(PUBLIC_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(dashboard_html(db, public=True))
     _export_csv(db, EXPORT_CSV)
     # Client register: one dossier per terminal-found client + an index.
     os.makedirs(CLIENTS_DIR, exist_ok=True)
