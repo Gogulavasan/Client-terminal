@@ -317,9 +317,123 @@ def main():
     s = sp.add_parser("pipeline"); s.set_defaults(fn=cmd_pipeline)
     s = sp.add_parser("export"); s.add_argument("--csv"); s.set_defaults(fn=cmd_export)
 
+    s = sp.add_parser("import", help="import leads from the old Firebase tracker CSV")
+    s.add_argument("csv"); s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--force", action="store_true", help="add even if company+city exists")
+    s.set_defaults(fn=cmd_import)
+
     a = p.parse_args()
     # argparse turns --next-date into next_date
     a.fn(a)
+
+
+# --------------------------------------------------------------------------
+# Import from the older Firebase "Client Relationship Tracker" export
+# (columns: Client Name, Company, City, Phone, Email, Priority, Product Fit,
+#  Current Status, Potential, Relationship, Response Status, Next Follow-up,
+#  Notes / Next Steps)
+# --------------------------------------------------------------------------
+_PRODUCT_MAP = [("escape", "escape_room"), ("dome", "dome_360"), ("360", "dome_360"),
+                ("mixed", "mixed_reality"), ("mr", "mixed_reality"),
+                ("photo", "photo_booth"), ("sim", "car_sim"), ("racing", "car_sim")]
+_STATUS_MAP = [("not interested", "lost"), ("won", "won"), ("closed", "won"),
+               ("most likely", "proposal"), ("likely accept", "proposal"),
+               ("proposal", "proposal"), ("meeting", "meeting"),
+               ("ongoing", "replied"), ("interested", "replied"),
+               ("replied", "replied"), ("pitched", "pitched"),
+               ("contacted", "pitched"), ("follow", "pitched"),
+               ("lost", "lost"), ("parked", "parked")]
+_TYPE_MAP = [("mall", "mall"), ("resort", "resort"), ("water park", "park"),
+             ("theme park", "park"), ("game zone", "fec"), ("play zone", "fec"),
+             ("gaming", "fec"), ("recreation", "fec"), ("entertainment", "fec"),
+             ("amusement", "fec"), ("gokart", "arena"), ("go-kart", "arena"),
+             ("karting", "arena"), ("arena", "arena"), ("stadium", "arena"),
+             ("performance centre", "arena"), ("performance center", "arena"),
+             ("sports", "arena"), ("cinema", "cinema"), ("multiplex", "cinema"),
+             ("developer", "developer"), ("builder", "developer"),
+             ("park", "park")]
+
+
+def _map(text, table, default):
+    t = (text or "").lower()
+    for key, val in table:
+        if key in t:
+            return val
+    return default
+
+
+def _products(text):
+    t = (text or "").lower()
+    out = []
+    for key, val in _PRODUCT_MAP:
+        if key in t and val not in out:
+            out.append(val)
+    return out
+
+
+def cmd_import(a):
+    db = load()
+    with open(a.csv, newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    g = lambda r, k: (r.get(k) or "").strip()
+    added = skipped = 0
+    for r in rows:
+        company = g(r, "Company") or g(r, "Client Name")
+        city = g(r, "City")
+        if not company:
+            continue
+        dup = next((l for l in db["leads"] if l["company"].lower() == company.lower()
+                    and l["city"].lower() == city.lower()), None)
+        if dup and not a.force:
+            print(f"skip  {company} ({city}) — exists as {dup['id']}")
+            skipped += 1
+            continue
+        try:
+            potential = float(g(r, "Potential") or 0)
+        except ValueError:
+            potential = 0
+        score = max(0, min(100, int(round(potential * 20))))     # 0–5 -> 0–100
+        status = _map(g(r, "Current Status"), _STATUS_MAP, "new")
+        if "no follow" in g(r, "Response Status").lower() and status == "lost":
+            status = "lost"
+        phone, email = g(r, "Phone"), g(r, "Email")
+        dm = {"name": g(r, "Client Name"), "role": "",
+              "channel": "phone" if phone else ("email" if email else ""),
+              "contact": phone or email, "verified": False,
+              "source": f"import:{os.path.basename(a.csv)}"}
+        nxt = g(r, "Next Follow-up")
+        notes = "; ".join(x for x in [
+            f"Priority: {g(r, 'Priority')}" if g(r, "Priority") else "",
+            f"Relationship: {g(r, 'Relationship')}" if g(r, "Relationship") else "",
+            f"Response: {g(r, 'Response Status')}" if g(r, "Response Status") else "",
+            g(r, "Notes / Next Steps")] if x)
+        lid = f"CRT-{db['next_id']:04d}"
+        lead = {
+            "id": lid, "company": company, "type": _map(company, _TYPE_MAP, "other"),
+            "city": city, "state": "", "website": "",
+            "source_url": f"import:{os.path.basename(a.csv)}",
+            "trigger": g(r, "Notes / Next Steps")[:120],
+            "decision_makers": [dm] if dm["name"] else [],
+            "score": score, "tier": tier_for(score), "status": status,
+            "products_fit": _products(g(r, "Product Fit")),
+            "pitch_angle": "", "owner": "",
+            "next_action": ("Follow up" if status not in ("lost", "won", "parked")
+                            else "None"),
+            "next_action_date": nxt if len(nxt) == 10 and nxt[4] == "-" else today(),
+            "interactions": [{"date": today(), "channel": "system",
+                              "summary": f"Imported from {os.path.basename(a.csv)}",
+                              "outcome": g(r, "Current Status")}],
+            "notes": notes, "created": today(), "updated": today(),
+        }
+        print(f"{'would add' if a.dry_run else 'add  '} {lid} {company} ({city}) "
+              f"status={status} score={score} products={lead['products_fit']}")
+        if not a.dry_run:
+            db["leads"].append(lead)
+            db["next_id"] += 1
+            added += 1
+    if not a.dry_run:
+        save(db)
+    print(f"\n{'dry run: ' if a.dry_run else ''}{added} added, {skipped} skipped")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,280 @@
 {
-  "next_id": 1,
-  "leads": []
+  "next_id": 8,
+  "leads": [
+    {
+      "id": "CRT-0001",
+      "company": "COAST High Performance Centre",
+      "type": "arena",
+      "city": "Coimbatore",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "Needs to discuss the SIM idea with his partners on 08 Oct. Once they agree, we can move to production.",
+      "decision_makers": [
+        {
+          "name": "Yohan",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 80,
+      "tier": "A",
+      "status": "replied",
+      "products_fit": [
+        "car_sim"
+      ],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "Follow up",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Interested"
+        }
+      ],
+      "notes": "Relationship: Smooth; Response: In follow-up; Needs to discuss the SIM idea with his partners on 08 Oct. Once they agree, we can move to production.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0002",
+      "company": "Atoddlerthing",
+      "type": "other",
+      "city": "Bengaluru",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "Client was unreceptive on the call. No further action planned.",
+      "decision_makers": [
+        {
+          "name": "Ashwanth",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "lost",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "None",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Not interested"
+        }
+      ],
+      "notes": "Relationship: Poor; Response: No follow-up; Client was unreceptive on the call. No further action planned.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0003",
+      "company": "A Square Gokarting",
+      "type": "arena",
+      "city": "Kakinada",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "Just not interested.",
+      "decision_makers": [
+        {
+          "name": "G.V. Sravan Kumar",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "lost",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "None",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Not interested"
+        }
+      ],
+      "notes": "Relationship: Poor; Response: No follow-up; Just not interested.",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0004",
+      "company": "Iplay International",
+      "type": "other",
+      "city": "Noida",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "",
+      "decision_makers": [
+        {
+          "name": "Rawal",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "replied",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "Follow up",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Ongoing"
+        }
+      ],
+      "notes": "",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0005",
+      "company": "Fun Fuel Game Zone & Restaurant",
+      "type": "fec",
+      "city": "Bhopal",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "",
+      "decision_makers": [
+        {
+          "name": "Deepanshu Jain",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "proposal",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "Follow up",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Most likely accept"
+        }
+      ],
+      "notes": "",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0006",
+      "company": "EMK Nexus Recreation & Entertainment",
+      "type": "fec",
+      "city": "",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "",
+      "decision_makers": [
+        {
+          "name": "Sandeep Pagaria",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "replied",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "Follow up",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "Ongoing"
+        }
+      ],
+      "notes": "",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    {
+      "id": "CRT-0007",
+      "company": "Play Zone",
+      "type": "fec",
+      "city": "Bengaluru",
+      "state": "",
+      "website": "",
+      "source_url": "import:clients-seed.csv",
+      "trigger": "",
+      "decision_makers": [
+        {
+          "name": "Abinandan",
+          "role": "",
+          "channel": "",
+          "contact": "",
+          "verified": false,
+          "source": "import:clients-seed.csv"
+        }
+      ],
+      "score": 0,
+      "tier": "C",
+      "status": "new",
+      "products_fit": [],
+      "pitch_angle": "",
+      "owner": "",
+      "next_action": "Follow up",
+      "next_action_date": "2026-10-08",
+      "interactions": [
+        {
+          "date": "2026-10-08",
+          "channel": "system",
+          "summary": "Imported from clients-seed.csv",
+          "outcome": "New"
+        }
+      ],
+      "notes": "",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    }
+  ]
 }
