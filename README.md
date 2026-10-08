@@ -22,7 +22,11 @@ to malls, FECs, resorts, parks and developers across India.
   - `/followups` — everything due today.
 - **`opportunities/`** — briefs: why now, venue, product fit, who to contact, sources.
   **You write the proposal** from these.
-- **`PIPELINE.md`** — auto-generated dashboard (`python crt.py pipeline`).
+- **`DASHBOARD.html`** — the monitoring dashboard: scanner status (online / last
+  scan / next scan), weekly-target progress, KPIs, hot leads, scanner activity feed,
+  follow-ups due, pipeline funnel. Self-contained — just open the file. **Regenerated
+  automatically after every scan.** `PIPELINE.md` is the same view rendered by GitHub
+  itself (open it in the repo), and `data/leads_export.csv` is the Power BI / Excel feed.
 
 ## Daily workflow
 

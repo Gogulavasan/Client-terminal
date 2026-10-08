@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
 *.tmp
-data/leads_export.csv
 .DS_Store
 Thumbs.db
