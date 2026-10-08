@@ -24,6 +24,7 @@ import csv
 import html
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -56,7 +57,13 @@ def load():
     if not os.path.exists(DATA):
         return {"next_id": 1, "leads": []}
     with open(DATA, "r", encoding="utf-8") as f:
-        return json.load(f)
+        db = json.load(f)
+    # origin: who found the lead. Only "terminal" leads appear in the dashboard /
+    # register; data from the separate old tracker is never merged in.
+    for l in db["leads"]:
+        if "origin" not in l:
+            l["origin"] = "import" if str(l.get("source_url", "")).startswith("import:") else "terminal"
+    return db
 
 
 def save(db):
@@ -113,6 +120,7 @@ def cmd_add(a):
         "next_action": a.next or "Research decision-maker and draft pitch",
         "next_action_date": a.next_date or today(),
         "owner": a.owner or "",
+        "origin": a.origin or "terminal",
         "interactions": [{"date": today(), "channel": "system",
                           "summary": "Lead created", "outcome": ""}],
         "notes": a.notes or "",
@@ -265,17 +273,65 @@ def _parse_iso(s):
         return None
 
 
+def is_terminal(l):
+    """Only leads the terminal found belong in its dashboard / register."""
+    return l.get("origin", "terminal") == "terminal"
+
+
+def week_bounds(d=None):
+    """Calendar week Monday..Sunday containing d (the weekly target's loop)."""
+    d = d or date.today()
+    start = d - timedelta(days=d.weekday())
+    return start, start + timedelta(days=6)
+
+
+def _parse_date(s):
+    try:
+        return date.fromisoformat((s or "")[:10])
+    except ValueError:
+        return None
+
+
+def _slug(s):
+    return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:40] or "client"
+
+
+def brief_for(lid):
+    d = os.path.join(BASE, "opportunities")
+    if os.path.isdir(d):
+        for f in sorted(os.listdir(d)):
+            if f.startswith(lid + "-") and f.endswith(".md"):
+                return f
+    return None
+
+
 def compute_stats(db):
-    leads = db["leads"]
+    leads = [l for l in db["leads"] if is_terminal(l)]   # terminal-found only
     now = datetime.now(timezone.utc)
-    week_ago = (date.today() - timedelta(days=7)).isoformat()
+    wk_start, wk_end = week_bounds()
+    ws, we = wk_start.isoformat(), wk_end.isoformat()
     by_status = {s: 0 for s in STATUSES}
     for l in leads:
         by_status[l["status"]] = by_status.get(l["status"], 0) + 1
     hot = sorted([l for l in leads if l["score"] >= 70 and active(l)], key=lambda l: -l["score"])
     due = sorted([l for l in leads if active(l) and l["next_action_date"] <= today()],
                  key=lambda l: (l["next_action_date"], -l["score"]))
-    weekly = [l for l in leads if l["score"] >= 45 and l.get("created", "") >= week_ago]
+    qualified = [l for l in leads if l["score"] >= 45]
+    weekly = [l for l in qualified if ws <= l.get("created", "") <= we]
+    # Weekly loop: this week plus every earlier week that found something.
+    hist = {}
+    for l in qualified:
+        c = _parse_date(l.get("created"))
+        if c:
+            s0, _ = week_bounds(c)
+            hist[s0] = hist.get(s0, 0) + 1
+    weeks, w = [], wk_start
+    for _ in range(12):
+        n = hist.get(w, 0)
+        if w == wk_start or n:
+            weeks.append({"start": w, "end": w + timedelta(days=6), "found": n,
+                          "met": n >= WEEKLY_TARGET, "current": w == wk_start})
+        w -= timedelta(days=7)
     briefs = sorted(f for f in os.listdir(os.path.join(BASE, "opportunities"))
                     if f.endswith(".md")) if os.path.isdir(os.path.join(BASE, "opportunities")) else []
     scans = _scan_commits()
@@ -288,15 +344,20 @@ def compute_stats(db):
         if active(l):
             by_city[l["city"] or "—"] = by_city.get(l["city"] or "—", 0) + 1
             by_type[l["type"]] = by_type.get(l["type"], 0) + 1
+    register = sorted(leads, key=lambda l: (l.get("created", ""), l["id"]), reverse=True)
     return {
         "now": now, "total": len(leads), "active": sum(1 for l in leads if active(l)),
-        "by_status": by_status, "hot": hot, "due": due, "weekly": len(weekly),
+        "by_status": by_status, "hot": hot, "due": due,
+        "weekly": len(weekly), "target_met": len(weekly) >= WEEKLY_TARGET,
+        "week_start": wk_start, "week_end": wk_end,
+        "days_left": max(0, (wk_end - date.today()).days), "weeks": weeks,
         "in_conv": by_status["replied"] + by_status["meeting"] + by_status["proposal"],
         "won": by_status["won"], "lost": by_status["lost"], "briefs": briefs,
         "scans": scans, "last_scan": last_scan, "age_h": age_h, "next_scan": nxt,
         "online": age_h is not None and age_h <= SCAN_EVERY_H + 1.5,
         "by_city": sorted(by_city.items(), key=lambda x: -x[1])[:8],
         "by_type": sorted(by_type.items(), key=lambda x: -x[1]),
+        "register": register,
     }
 
 
@@ -326,7 +387,11 @@ def pipeline_text(db):
            f"_Updated {_ist(s['now'])}_ · open **DASHBOARD.html** for the full view", "",
            f"**Scanner:** {status} · last scan {_ago(s['age_h'])} ({_ist(s['last_scan'])}) · "
            f"next ≈ {_ist(s['next_scan'])}", "",
-           f"**This week:** `{_bar(s['weekly'], WEEKLY_TARGET)}` **{s['weekly']} / {WEEKLY_TARGET}** qualified clients", "",
+           f"**Week {s['week_start']:%d %b} – {s['week_end']:%d %b}:** `{_bar(s['weekly'], WEEKLY_TARGET)}` "
+           f"**{s['weekly']} / {WEEKLY_TARGET}** qualified clients · "
+           + ("✅ **TARGET MET** — scanner keeps running; counter resets Monday"
+              if s["target_met"] else
+              f"{WEEKLY_TARGET - s['weekly']} to go · {s['days_left']} day(s) left · resets Monday"), "",
            f"| Total | Active | 🔥 Hot | New this week | In conversation | Won | Briefs | Due |",
            f"|---|---|---|---|---|---|---|---|",
            f"| {s['total']} | {s['active']} | {len(s['hot'])} | {s['weekly']} | {s['in_conv']} "
@@ -343,6 +408,18 @@ def pipeline_text(db):
             f"| {l['next_action']} |" for l in s["due"]] or ["| – | | | | |"]
     out += ["", f"## 🛰 Recent scans", ""]
     out += [f"- {_ist(_parse_iso(d))} — {m}" for d, m in s["scans"]] or ["- (none yet)"]
+    out += ["", "## 🔁 Weekly loop", "", "| Week | Found | Target | Result |", "|---|---|---|---|"]
+    out += [f"| {w['start']:%d %b} – {w['end']:%d %b}{' (current)' if w['current'] else ''} "
+            f"| {w['found']} | {WEEKLY_TARGET} "
+            f"| {'✅ met' if w['met'] else ('⏳ in progress' if w['current'] else '✗ missed')} |"
+            for w in s["weeks"]]
+    out += ["", f"## 📇 Client register — found by the terminal ({len(s['register'])})", "",
+            "_Terminal-found clients only; the older Client Relationship Tracker data is kept "
+            "separate. Full dossiers: [CLIENTS.md](CLIENTS.md)._", "",
+            "| ID | Found | Score | Company | City | Status | Dossier |", "|---|---|---|---|---|---|---|"]
+    out += [f"| {l['id']} | {l['created']} | {l['score']} | {l['company']} | {l['city']} | {l['status']} "
+            f"| [open](clients/{l['id']}-{_slug(l['company'])}.md) |"
+            for l in s["register"]] or ["| – | | | | | | |"]
     return "\n".join(out) + "\n"
 
 
@@ -352,14 +429,70 @@ def dashboard_html(db):
     dot = "on" if s["online"] else ("stale" if s["last_scan"] else "off")
     status_txt = {"on": "SCANNER ONLINE", "stale": "SCANNER STALE", "off": "NO SCANS YET"}[dot]
     pct = min(100, int(100 * s["weekly"] / WEEKLY_TARGET))
-
-    def kpi(label, val, sub=""):
-        return (f'<div class="kpi"><div class="v">{e(str(val))}</div>'
-                f'<div class="l">{e(label)}</div><div class="s">{e(sub)}</div></div>')
+    week_lbl = f"{s['week_start']:%d %b} – {s['week_end']:%d %b}"
+    if s["target_met"]:
+        week_state = ("<span class='badge ok'>✅ TARGET MET</span>"
+                      "<span class='sub'>scanner keeps running · counter resets Monday</span>")
+    else:
+        week_state = (f"<span class='sub'>{WEEKLY_TARGET - s['weekly']} to go · "
+                      f"{s['days_left']} day(s) left · resets Monday</span>")
+    chips = []
+    for w in s["weeks"][::-1]:
+        cls = "met" if w["met"] else ("cur" if w["current"] else "miss")
+        lbl = w["start"].strftime("%d %b")
+        chips.append(f"<span class='wk {cls}' title='{lbl} – {w['end'].strftime('%d %b')}'>"
+                     f"{lbl}<b>{w['found']}/{WEEKLY_TARGET}</b></span>")
+    weeks_html = "".join(chips)
 
     def pill(score):
         c = "hot" if score >= 70 else "warm" if score >= 45 else "cold"
         return f'<span class="score {c}">{score}</span>'
+
+    def dm_rows(l):
+        return "".join(
+            f"<tr><td>{e(d['name'])}</td><td>{e(d['role'])}</td>"
+            f"<td class='mono'>{e(d['channel'])}: {e(d['contact'])}</td>"
+            f"<td>{'VERIFIED' if d.get('verified') else 'UNVERIFIED'}</td>"
+            f"<td class='sub'>{e(d.get('source', ''))}</td></tr>"
+            for d in l["decision_makers"]) or \
+            "<tr><td colspan='5' class='sub'>no decision-maker found yet</td></tr>"
+
+    def hist_rows(l):
+        return "".join(
+            f"<li><span class='mono'>{e(i['date'])} · {e(i['channel'])}</span>"
+            f"<span>{e(i['summary'])}{(' → ' + e(i['outcome'])) if i.get('outcome') else ''}</span></li>"
+            for i in l["interactions"][::-1]) or "<li class='sub'>no history yet</li>"
+
+    def kv(label, val):
+        return f"<div><span>{e(label)}</span>{val}</div>"
+
+    reg = []
+    for l in s["register"]:
+        bf = brief_for(l["id"])
+        dossier = f"clients/{l['id']}-{_slug(l['company'])}.md"
+        notes = f"<h4>Notes</h4><p class='sub'>{e(l['notes'])}</p>" if l.get("notes") else ""
+        brief = f" · Brief: <span class='mono'>opportunities/{e(bf)}</span>" if bf else ""
+        reg.append(
+            f"<details class='cl'><summary><span class='mono'>{e(l['id'])}</span> <b>{e(l['company'])}</b>"
+            f"<span class='sub'>{e(l['city'])}</span> {pill(l['score'])} "
+            f"<span class='st st-{e(l['status'])}'>{e(l['status'])}</span>"
+            f"<span class='sub'>found {e(l['created'])}</span></summary><div class='clbody'>"
+            f"<div class='kv2'>{kv('Type', e(l['type']))}{kv('Tier', e(l['tier']))}"
+            f"{kv('Website', e(l['website'] or '—'))}{kv('Source', '<span class=mono>' + e(l['source_url'] or '—') + '</span>')}"
+            f"{kv('Trigger — why now', e(l['trigger'] or '—'))}{kv('Pitch angle', e(l['pitch_angle'] or '—'))}"
+            f"{kv('Products fit', e(', '.join(l['products_fit']) or '—'))}"
+            f"{kv('Next action', e(l['next_action_date']) + ' · ' + e(l['next_action']))}"
+            f"{kv('Owner', e(l['owner'] or '—'))}{kv('Last updated', e(l['updated']))}</div>"
+            f"<h4>Decision-makers</h4><table><thead><tr><th>Name</th><th>Role</th><th>Channel</th>"
+            f"<th>Verified</th><th>Source</th></tr></thead><tbody>{dm_rows(l)}</tbody></table>"
+            f"<h4>History — past to present</h4><ul class='feed'>{hist_rows(l)}</ul>{notes}"
+            f"<p class='sub' style='margin-top:10px'>Dossier: <span class='mono'>{e(dossier)}</span>{brief}</p>"
+            f"</div></details>")
+    register_html = "".join(reg) or "<div class='sub'>No clients found by the terminal yet.</div>"
+
+    def kpi(label, val, sub=""):
+        return (f'<div class="kpi"><div class="v">{e(str(val))}</div>'
+                f'<div class="l">{e(label)}</div><div class="s">{e(sub)}</div></div>')
 
     hot_rows = "".join(
         f"<tr><td class='mono'>{e(l['id'])}</td><td>{pill(l['score'])}</td>"
@@ -422,6 +555,13 @@ td{{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}} tr:
 ul.feed{{list-style:none}} ul.feed li{{display:flex;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}} ul.feed li:last-child{{border-bottom:0}} ul.feed .mono{{color:var(--dim);white-space:nowrap}}
 ul.kv{{list-style:none}} ul.kv li{{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}} ul.kv li:last-child{{border-bottom:0}}
 footer{{margin-top:22px;color:var(--dim);font-size:12px;text-align:center}}
+.badge{{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:800;font-size:12px;margin-right:10px}} .badge.ok{{background:rgba(55,224,166,.18);color:var(--acc)}}
+.weeks{{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}} .wk{{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--dim)}}
+.wk b{{font-size:13px;color:var(--fg);margin-top:2px}} .wk.met{{border-color:var(--acc);background:rgba(55,224,166,.1)}} .wk.cur{{border-color:var(--acc2);background:rgba(76,141,255,.12)}} .wk.miss{{opacity:.7}}
+details.cl{{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:var(--bg)}} details.cl summary{{cursor:pointer;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;list-style:none}}
+details.cl summary::-webkit-details-marker{{display:none}} details.cl summary::before{{content:"▸";color:var(--dim)}} details.cl[open] summary::before{{content:"▾"}}
+.clbody{{padding:4px 14px 14px;border-top:1px solid var(--line)}} .clbody h4{{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}}
+.kv2{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 18px;font-size:13px;margin-top:10px}} .kv2 div span{{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}}
 </style></head><body><div class="wrap">
 <header>
   <h1>Client Terminal <small>Circuit Entertainment · B2B growth engine</small></h1>
@@ -434,9 +574,10 @@ footer{{margin-top:22px;color:var(--dim);font-size:12px;text-align:center}}
 </header>
 
 <div class="card" style="margin-bottom:14px">
-  <h2>Weekly target — qualified clients found</h2>
+  <h2>🔁 Weekly target — {e(week_lbl)} · qualified clients found by the terminal</h2>
   <div class="target"><div class="big">{s['weekly']}<small> / {WEEKLY_TARGET}</small></div>
-  <div class="prog"><i></i></div><div class="sub">{pct}% · leads scoring ≥45 found in the last 7 days</div></div>
+  <div class="prog"><i></i></div><div>{week_state}</div></div>
+  <div class="weeks">{weeks_html}</div>
 </div>
 
 <div class="grid g4" style="margin-bottom:14px">
@@ -457,17 +598,77 @@ footer{{margin-top:22px;color:var(--dim);font-size:12px;text-align:center}}
   <div class="card"><h2>Active leads by city</h2><ul class="kv">{cities}</ul></div>
   <div class="card"><h2>Active leads by venue type</h2><ul class="kv">{types}</ul></div>
 </div>
+
+<div class="card" style="margin-top:14px">
+  <h2>📇 Client register — full past &amp; present record of every client the terminal found ({len(s['register'])})</h2>
+  <p class="sub" style="margin-bottom:10px">Terminal-found clients only — the older Client Relationship Tracker data is kept separate. Click a client to expand. Dossiers live in <span class="mono">clients/</span>.</p>
+  {register_html}
+</div>
 <footer>Regenerated automatically after every scan (<span class="mono">python crt.py pipeline</span>) · data: <span class="mono">data/leads.json</span> · Power BI: <span class="mono">data/leads_export.csv</span></footer>
 </div></body></html>
 """
 
 
+CLIENTS_DIR = os.path.join(BASE, "clients")
+CLIENTS_MD = os.path.join(BASE, "CLIENTS.md")
+
+
+def client_dossier_md(l):
+    """Full past + present record of one terminal-found client."""
+    bf = brief_for(l["id"])
+    out = [f"# {l['id']} · {l['company']} · {l['city'] or '—'}", "",
+           f"**Found by the terminal:** {l['created']} · **Score:** {l['score']} (Tier {l['tier']}) · "
+           f"**Status:** {l['status']} · **Updated:** {l['updated']}", "",
+           "## Present", "",
+           f"- **Type:** {l['type']}  ·  **State:** {l['state'] or '—'}",
+           f"- **Website:** {l['website'] or '—'}",
+           f"- **Source:** {l['source_url'] or '—'}",
+           f"- **Trigger (why now):** {l['trigger'] or '—'}",
+           f"- **Pitch angle:** {l['pitch_angle'] or '—'}",
+           f"- **Products fit:** {', '.join(l['products_fit']) or '—'}",
+           f"- **Next action:** {l['next_action']} (due {l['next_action_date']})",
+           f"- **Owner:** {l['owner'] or '—'}", "",
+           "### Decision-makers", ""]
+    if l["decision_makers"]:
+        out += ["| Name | Role | Channel | Contact | Verified | Source |", "|---|---|---|---|---|---|"]
+        out += [f"| {d['name']} | {d['role']} | {d['channel']} | {d['contact']} "
+                f"| {'VERIFIED' if d.get('verified') else 'UNVERIFIED'} | {d.get('source', '')} |"
+                for d in l["decision_makers"]]
+    else:
+        out.append("_No decision-maker found yet._")
+    out += ["", "### Opportunity brief", "",
+            f"[opportunities/{bf}](../opportunities/{bf})" if bf else "_No brief (score below 70 at discovery)._",
+            "", "## Past — full history", ""]
+    out += [f"- **{i['date']}** · {i['channel']} — {i['summary']}"
+            + (f" → _{i['outcome']}_" if i.get("outcome") else "")
+            for i in l["interactions"]] or ["- (none)"]
+    if l.get("notes"):
+        out += ["", "## Notes", "", l["notes"]]
+    return "\n".join(out) + "\n"
+
+
 def write_outputs(db):
+    s = compute_stats(db)
     with open(PIPELINE_MD, "w", encoding="utf-8") as f:
         f.write(pipeline_text(db))
     with open(DASHBOARD_HTML, "w", encoding="utf-8") as f:
         f.write(dashboard_html(db))
     _export_csv(db, EXPORT_CSV)
+    # Client register: one dossier per terminal-found client + an index.
+    os.makedirs(CLIENTS_DIR, exist_ok=True)
+    idx = ["# Client register — found by the terminal", "",
+           f"_Updated {_ist(s['now'])}. Terminal-found clients only; the older Client "
+           "Relationship Tracker data is kept separate._", "",
+           "| ID | Found | Score | Company | City | Status | Next | Dossier |",
+           "|---|---|---|---|---|---|---|---|"]
+    for l in s["register"]:
+        fn = f"{l['id']}-{_slug(l['company'])}.md"
+        with open(os.path.join(CLIENTS_DIR, fn), "w", encoding="utf-8") as f:
+            f.write(client_dossier_md(l))
+        idx.append(f"| {l['id']} | {l['created']} | {l['score']} | {l['company']} | {l['city']} "
+                   f"| {l['status']} | {l['next_action_date']} {l['next_action']} | [open](clients/{fn}) |")
+    with open(CLIENTS_MD, "w", encoding="utf-8") as f:
+        f.write("\n".join(idx) + "\n")
 
 
 def cmd_pipeline(a):
@@ -512,6 +713,8 @@ def main():
         s.add_argument("--" + k)
     s.add_argument("--score", type=int)
     s.add_argument("--dm", action="append", help="name|role|channel|contact|verified|source (repeatable)")
+    s.add_argument("--origin", choices=["terminal", "manual"], default="terminal",
+                   help="terminal (found by the scanner, default) or manual")
     s.add_argument("--force", action="store_true")
     s.set_defaults(fn=cmd_add)
 
@@ -639,7 +842,7 @@ def cmd_import(a):
             "decision_makers": [dm] if dm["name"] else [],
             "score": score, "tier": tier_for(score), "status": status,
             "products_fit": _products(g(r, "Product Fit")),
-            "pitch_angle": "", "owner": "",
+            "pitch_angle": "", "owner": "", "origin": "import",
             "next_action": ("Follow up" if status not in ("lost", "won", "parked")
                             else "None"),
             "next_action_date": nxt if len(nxt) == 10 and nxt[4] == "-" else today(),

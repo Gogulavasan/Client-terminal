@@ -60,6 +60,21 @@ python crt.py export --csv leads.csv
 ```
 Statuses: `new researched pitched replied meeting proposal won lost parked do_not_contact`.
 
+## Weekly target — runs in a loop
+The target is **10 qualified clients per calendar week (Monday–Sunday)**. When it's met
+early, the dashboard shows **TARGET MET**, the scanner keeps running, and the counter
+**resets every Monday**. Past weeks are kept as a history (found / 10, met or not).
+
+## Client register — full past & present record
+Every client the terminal finds gets a **dossier** in `clients/<ID>-<name>.md` (all current
+fields, decision-makers, the opportunity brief, and the complete history timeline), listed in
+`CLIENTS.md` and shown as an expandable **Client register** in the dashboard. All regenerated
+on every scan.
+
+**Data policy:** the terminal's data holds **only clients found by the terminal**
+(`origin: terminal`). It is never merged with the separate, older *Client Relationship Tracker*
+(Firebase) repo — that data stays where it is.
+
 ## Principles (non-negotiable)
 1. **Real leads only.** Every fact and contact has a source URL; unknowns are marked `UNVERIFIED`. Nothing is invented.
 2. **Drafts, not blasts.** Every pitch is written for a human to approve and send. Max 3 touches, then park. Opt-outs are honoured permanently (`do_not_contact`).
